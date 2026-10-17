@@ -1,0 +1,76 @@
+[
+  {
+    "id": "q001",
+    "type": "direct_factual",
+    "question": "What is the main topic of the document?",
+    "expected_in_document": true,
+    "notes": "Answer should be grounded in the document's introduction or abstract."
+  },
+  {
+    "id": "q002",
+    "type": "multi_chunk",
+    "question": "Summarize all the key findings mentioned across the document.",
+    "expected_in_document": true,
+    "notes": "Requires aggregating information from multiple sections."
+  },
+  {
+    "id": "q003",
+    "type": "not_in_document",
+    "question": "What is the population of Tokyo?",
+    "expected_in_document": false,
+    "expected_refusal": true,
+    "notes": "Answer should not be found in typical uploaded documents; model must refuse."
+  },
+  {
+    "id": "q004",
+    "type": "follow_up",
+    "question": "Can you elaborate on the second point you mentioned?",
+    "expected_in_document": true,
+    "notes": "Tests follow-up capability using conversation context."
+  },
+  {
+    "id": "q005",
+    "type": "citation",
+    "question": "On what page is the methodology described?",
+    "expected_in_document": true,
+    "requires_page_citation": true,
+    "notes": "Should cite a specific page number for PDF documents."
+  },
+  {
+    "id": "q006",
+    "type": "document_filter",
+    "question": "What does the first document say about conclusions?",
+    "expected_in_document": true,
+    "notes": "Tests document filtering — only the specified document should be searched."
+  },
+  {
+    "id": "q007",
+    "type": "direct_factual",
+    "question": "What dates or deadlines are mentioned in the document?",
+    "expected_in_document": true,
+    "notes": "Tests extraction of temporal information."
+  },
+  {
+    "id": "q008",
+    "type": "not_in_document",
+    "question": "Who won the FIFA World Cup in 2022?",
+    "expected_in_document": false,
+    "expected_refusal": true,
+    "notes": "Clear general knowledge question that should trigger a refusal."
+  },
+  {
+    "id": "q009",
+    "type": "multi_chunk",
+    "question": "What are the risks or limitations mentioned in the document?",
+    "expected_in_document": true,
+    "notes": "Limitations may appear in multiple sections — tests cross-chunk retrieval."
+  },
+  {
+    "id": "q010",
+    "type": "citation",
+    "question": "Quote the exact definition given in the document for the main term.",
+    "expected_in_document": true,
+    "requires_page_citation": true,
+    "notes": "Tests citation accuracy and prevents hallucinated quotes."
+  }
+]

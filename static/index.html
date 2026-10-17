@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat with PDF — AI Document Q&A</title>
+  <meta name="description" content="Upload PDFs and documents, then chat with them using AI. Powered by Google Gemini and FAISS vector search." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <!-- Ambient background blobs -->
+  <div class="bg-blob bg-blob-1" aria-hidden="true"></div>
+  <div class="bg-blob bg-blob-2" aria-hidden="true"></div>
+  <div class="bg-blob bg-blob-3" aria-hidden="true"></div>
+
+  <div class="app-shell">
+
+    <!-- ── Sidebar ──────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar" role="complementary" aria-label="Document panel">
+
+      <!-- Brand -->
+      <div class="sidebar-brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">ChatPDF</span>
+          <span class="brand-tag">RAG · Gemini</span>
+        </div>
+      </div>
+
+      <!-- Upload Zone -->
+      <div class="upload-section">
+        <div
+          class="drop-zone"
+          id="dropZone"
+          role="button"
+          tabindex="0"
+          aria-label="Upload documents. Drag and drop or click to browse."
+        >
+          <div class="drop-zone-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p class="drop-zone-text">Drop files here or <span class="link-text">browse</span></p>
+          <p class="drop-zone-hint">PDF · DOCX · TXT · MD · CSV · Max 20 MB</p>
+          <input type="file" id="fileInput" multiple accept=".pdf,.docx,.txt,.md,.csv" class="file-input-hidden" aria-label="File input" />
+        </div>
+
+        <!-- Upload Progress -->
+        <div class="upload-progress-container" id="uploadProgress" aria-live="polite" hidden>
+          <div class="upload-progress-bar">
+            <div class="upload-progress-fill" id="uploadProgressFill"></div>
+          </div>
+          <span class="upload-progress-text" id="uploadProgressText">Uploading…</span>
+        </div>
+      </div>
+
+      <!-- Documents List -->
+      <div class="docs-section">
+        <div class="docs-header">
+          <h2 class="docs-title">Documents</h2>
+          <span class="docs-count" id="docsCount">0</span>
+        </div>
+        <div class="docs-list" id="docsList" role="list" aria-label="Uploaded documents">
+          <div class="docs-empty" id="docsEmpty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.4">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <p>No documents yet.<br/>Upload files to start chatting.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter selector -->
+      <div class="filter-section" id="filterSection" hidden>
+        <label class="filter-label" for="filterMode">Chat with</label>
+        <select class="filter-select" id="filterMode" aria-label="Document filter">
+          <option value="all">All documents</option>
+          <option value="selected">Selected documents only</option>
+        </select>
+      </div>
+
+      <!-- Sidebar footer -->
+      <div class="sidebar-footer">
+        <div class="health-dot" id="healthDot" title="Checking status…" aria-label="API status indicator"></div>
+        <span class="health-label" id="healthLabel">Checking…</span>
+      </div>
+    </aside>
+
+    <!-- ── Main Content ─────────────────────────────────────── -->
+    <main class="main-content" role="main">
+
+      <!-- Topbar -->
+      <header class="topbar" role="banner">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar" aria-expanded="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <div class="topbar-center">
+          <h1 class="topbar-title">Chat with PDF</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-btn" id="clearChatBtn" title="Clear conversation" aria-label="Clear conversation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+          </button>
+          <button class="icon-btn debug-toggle-btn" id="debugToggle" title="Toggle debug panel" aria-label="Toggle debug panel" aria-pressed="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Chat Area -->
+      <div class="chat-area" id="chatArea" role="log" aria-live="polite" aria-label="Chat messages">
+        <!-- Welcome state -->
+        <div class="welcome-state" id="welcomeState">
+          <div class="welcome-icon" aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <h2 class="welcome-title">Ask anything about your documents</h2>
+          <p class="welcome-subtitle">Upload a PDF, DOCX, or text file in the sidebar, then type your question below.</p>
+          <div class="welcome-examples">
+            <button class="example-chip" data-question="Summarize the key points of the document">Summarize key points</button>
+            <button class="example-chip" data-question="What are the main conclusions?">Main conclusions</button>
+            <button class="example-chip" data-question="List all dates and deadlines mentioned">Dates &amp; deadlines</button>
+            <button class="example-chip" data-question="What methodology was used?">Methodology used</button>
+          </div>
+        </div>
+
+        <!-- Messages container -->
+        <div class="messages-container" id="messagesContainer"></div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="input-area">
+        <div class="input-wrapper">
+          <textarea
+            class="chat-input"
+            id="chatInput"
+            placeholder="Ask a question about your documents…"
+            rows="1"
+            aria-label="Chat input"
+            aria-multiline="true"
+          ></textarea>
+          <div class="input-actions">
+            <button class="stop-btn" id="stopBtn" hidden aria-label="Stop generation">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </button>
+            <button class="send-btn" id="sendBtn" aria-label="Send message" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="input-hint">
+          <span id="streamStatus"></span>
+          <span>Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- ── Debug Drawer ─────────────────────────────────────── -->
+    <aside class="debug-drawer" id="debugDrawer" role="complementary" aria-label="Debug panel" aria-hidden="true">
+      <div class="debug-header">
+        <h3 class="debug-title">Debug Panel</h3>
+        <button class="icon-btn" id="debugClose" aria-label="Close debug panel">✕</button>
+      </div>
+      <div class="debug-content" id="debugContent">
+        <div class="debug-empty">
+          <p>Debug information will appear here after each query.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Delete confirmation modal -->
+  <div class="modal-overlay" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle" hidden>
+    <div class="modal">
+      <h3 class="modal-title" id="deleteModalTitle">Delete Document?</h3>
+      <p class="modal-body" id="deleteModalBody">This will permanently remove the document and all its indexed chunks.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="deleteCancel">Cancel</button>
+        <button class="btn btn-danger" id="deleteConfirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast-container" id="toastContainer" aria-live="assertive" aria-atomic="true"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
